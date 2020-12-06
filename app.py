@@ -75,44 +75,7 @@ def precipitation():
     # Return the JSON representation of your dictionary.    
     return jsonify(precip_list)
 
-@app.route("/api/v1.0/<start>/<end>")
-# home page
-def x(start,end):
-    session = Session(engine)
-    results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-        filter(Measurement.date <= end).\
-        filter(Measurement.date >= start).all()    
-    session.close()
-
-    stats_list = []
-    for i in results:
-        stats_dict = {}
-        stats_dict["Minimum"] = i[0]
-        stats_dict["Average"] = i[1]
-        stats_dict["Maximum"] = i[2]
-        stats_list.append(stats_dict)
-    
-    return jsonify(stats_list)
-
-@app.route("/api/v1.0/<start>")
-def temp_stats1(start):
-    # Return a JSON list of min, avg, and max temps for all dates greater than and equal to start date provided
-    session = Session(engine)
-    results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-        filter(Measurement.date >= start).all()    
-    session.close()
-
-    stats_list = []
-    for i in results:
-        stats_dict = {}
-        stats_dict["Minimum"] = i[0]
-        stats_dict["Average"] = i[1]
-        stats_dict["Maximum"] = i[2]
-        stats_list.append(stats_dict)
-    
-    return jsonify(stats_list)
-
-    
+   
 @app.route("/api/v1.0/stations")
 def stations():
     # Return a JSON list of stations from the dataset
@@ -158,6 +121,44 @@ def temps():
 
     #Return a JSON list of temperature observations (TOBS) for the previous year.
     return jsonify(tobs_list)
+
+
+@app.route("/api/v1.0/<start>")
+def temp_stats1(start):
+    # Return a JSON list of min, avg, and max temps for all dates greater than and equal to start date provided
+    session = Session(engine)
+    results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start).all()    
+    session.close()
+
+    stats_list = []
+    for i in results:
+        stats_dict = {}
+        stats_dict["Minimum"] = i[0]
+        stats_dict["Average"] = i[1]
+        stats_dict["Maximum"] = i[2]
+        stats_list.append(stats_dict)
+    
+    return jsonify(stats_list)
+
+@app.route("/api/v1.0/<start>/<end>")
+    # Return a JSON list of min, avg, and max temps for all dates between dates provided, inclusive
+def x(start,end):
+    session = Session(engine)
+    results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date <= end).\
+        filter(Measurement.date >= start).all()    
+    session.close()
+
+    stats_list = []
+    for i in results:
+        stats_dict = {}
+        stats_dict["Minimum"] = i[0]
+        stats_dict["Average"] = i[1]
+        stats_dict["Maximum"] = i[2]
+        stats_list.append(stats_dict)
+    
+    return jsonify(stats_list)
 
 if __name__ == '__main__':
     app.run(debug=True)
