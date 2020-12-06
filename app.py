@@ -1,25 +1,27 @@
-import numpy as np
+#################################################
+# Dependencies
+#################################################
+from flask import Flask, jsonify
 
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func, inspect
 
-from flask import Flask, jsonify
-
+import datetime as dt
 
 #################################################
 # Database Setup
 #################################################
-engine = create_engine("sqlite:///titanic.sqlite")
+engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 
 # reflect an existing database into a new model
 Base = automap_base()
-# reflect the tables
 Base.prepare(engine, reflect=True)
 
-# Save reference to the table
-Passenger = Base.classes.passenger
+# Save references to each table
+Measurement = Base.classes.measurement
+Station = Base.classes.station
 
 #################################################
 # Flask Setup
@@ -32,14 +34,94 @@ app = Flask(__name__)
 #################################################
 
 @app.route("/")
+# home page
 def welcome():
-    return ("Welcome to the home page")
+    return (
+        f"Welcome to the home page<br/>"
+        f"<br/>"
+        f"Available Routes:<br/>"
+        f"<br/>"
+        f" 1.  /api/v1.0/precipitation<br/>"
+        f" 2.  /api/v1.0/stations<br/>"
+        f" 3.  /api/v1.0/tobs<br/>"
+        f" 4.  /api/v1.0/&lt;start&gt; - provide start date<br/>"
+        f" 5.  /api/v1.0/&lt;start&gt;/&lt;end&gt; - provide start and end dates"
+
+    )
+
+@app.route("/api/v1.0/precipitation")
+def precipitation():
+    # Find most recent date
+    session = Session(engine)
+    most_recent_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    strdate = str(most_recent_date[0])
+
+    # Calculate the date 1 year ago from the last data point in the database
+    start_date = dt.datetime.strptime(strdate, "%Y-%m-%d") - dt.timedelta(days=366)
+
+    # Perform a query to retrieve the data and precipitation scores
+    results = session.query(Measurement.date, Measurement.prcp).\
+        filter(Measurement.prcp >=0).\
+        filter(Measurement.date >= start_date).all()
+
+    # Convert the query results to a dictionary using date as the key and prcp as the value.
+    precip_list = []
+    for i in results:
+        precip_dict = {}
+        precip_dict["Date"] = i[0]
+        precip_dict["Precipitation"] = i[1]
+        precip_list.append(precip_dict)
+
+    # Return the JSON representation of your dictionary.    
+    return jsonify(precip_list)
+
+    
+
+@app.route("/api/v1.0/stations")
+def stations():
+    # Return a JSON list of stations from the dataset
+    session = Session(engine)
+    station_count = session.query(Station.name).count() 
+    stations = session.query(Station.id, Station.station, Station.name).all()
+    session.close()
+
+    station_list = []
+    for row in stations:
+        station_dict = {}
+        station_dict["ID"]= row[0]
+        station_dict["Station"]= row[1]
+        station_dict["Name"] = row[2]
+        station_list.append(station_dict)
+    
+    return jsonify(station_list)
 
 
-@app.route("/api/v1.0/apiname")
-def apiname():
-    return ("Welcome to the api page")
+@app.route("/api/v1.0/tobs")
+def temps():
+    session = Session(engine)
 
+    # Find most recent date
+    most_recent_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    strdate = str(most_recent_date[0])
+    # Calculate the date 1 year ago from the last data point in the database
+    start_date = dt.datetime.strptime(strdate, "%Y-%m-%d") - dt.timedelta(days=366)
+
+    #Query the dates and temperature observations of the most active station for the last year of data.
+    most_active_station = 'USC00519281'
+    results = session.query(Measurement.date, Measurement.tobs).\
+        filter(Measurement.date >= start_date).\
+        filter(Measurement.station == most_active_station).all()
+    session.close()
+
+    tobs_list = []
+    for i in results:
+        tobs_dict = {}
+        tobs_dict["Date"] = i[0]
+        tobs_dict["Temporature"] = i[1]
+        tobs_list.append(tobs_dict)
+
+    #Return a JSON list of temperature observations (TOBS) for the previous year.
+    return jsonify(tobs_list)
 
 
 if __name__ == '__main__':
