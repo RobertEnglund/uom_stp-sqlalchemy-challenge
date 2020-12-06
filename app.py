@@ -41,11 +41,11 @@ def welcome():
         f"<br/>"
         f"Available Routes:<br/>"
         f"<br/>"
-        f" 1.  /api/v1.0/precipitation<br/>"
-        f" 2.  /api/v1.0/stations<br/>"
-        f" 3.  /api/v1.0/tobs<br/>"
-        f" 4.  /api/v1.0/&lt;start&gt; - provide start date<br/>"
-        f" 5.  /api/v1.0/&lt;start&gt;/&lt;end&gt; - provide start and end dates"
+        f" 1.  Precipitation by date:   /api/v1.0/precipitation<br/>"
+        f" 2.  List of stations:        /api/v1.0/stations<br/>"
+        f" 3.  Temperature by date:     /api/v1.0/tobs<br/>"
+        f" 4.  Min/Avg/Max temps from start date (provide date as yyyy-mm-dd):   /api/v1.0/&lt;start&gt;<br/>"
+        f" 5.  Min/Avg/Max temps between dates (provide dates as yyyy-mm-dd):    /api/v1.0/&lt;start&gt;/&lt;end&gt;"
 
     )
 
@@ -75,14 +75,13 @@ def precipitation():
     # Return the JSON representation of your dictionary.    
     return jsonify(precip_list)
 
-
-@app.route("/api/v1.0/<start>")
-def temp_stats1(start):
-    # Return a JSON list of min, avg, and max temps for all dates greater than and equal to start date provided
+@app.route("/api/v1.0/<start>/<end>")
+# home page
+def x(start,end):
     session = Session(engine)
-    start_date = dt.datetime.strptime(start, "%Y-%m-%d")
     results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-        filter(Measurement.date >= start_date).all()    
+        filter(Measurement.date <= end).\
+        filter(Measurement.date >= start).all()    
     session.close()
 
     stats_list = []
@@ -94,8 +93,26 @@ def temp_stats1(start):
         stats_list.append(stats_dict)
     
     return jsonify(stats_list)
-    
 
+@app.route("/api/v1.0/<start>")
+def temp_stats1(start):
+    # Return a JSON list of min, avg, and max temps for all dates greater than and equal to start date provided
+    session = Session(engine)
+    results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start).all()    
+    session.close()
+
+    stats_list = []
+    for i in results:
+        stats_dict = {}
+        stats_dict["Minimum"] = i[0]
+        stats_dict["Average"] = i[1]
+        stats_dict["Maximum"] = i[2]
+        stats_list.append(stats_dict)
+    
+    return jsonify(stats_list)
+
+    
 @app.route("/api/v1.0/stations")
 def stations():
     # Return a JSON list of stations from the dataset
